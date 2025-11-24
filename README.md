@@ -129,9 +129,7 @@ sequenceDiagram
    - **Reason**: Low latency while avoiding excessive network requests
    - **For 1hr sessions**: ~360 chunks, manageable with proper buffering
 
-## 🎥 Video Walkthrough
-
-[Download MOV](sandbox:/mnt/data/Screen%20Recording%202025-11-25%20at%2012.16.47%20AM.mov?_chatgptios_conversationID=6924ae4c-e864-8320-b932-1ab6ffc6c415&_chatgptios_messageID=2e9e5ca0-ba56-49d9-9dcc-089a17a8b81b)
+## 🎥 Video Walkthrough:()
 > **What's demonstrated:**
 > - ✅ Sign up and authentication  
 > - ✅ Start mic recording with real-time transcription  
