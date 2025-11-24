@@ -131,7 +131,9 @@ sequenceDiagram
 
 ## 🎥 Video Walkthrough
 
-> **📹 Demo Video**: [https://github.com/btwitspratyush/Scribe-Ai/raw/main/demo.mov]
+> **📹 Demo Video**: [## 🎥 Demo
+
+https://github.com/btwitspratyush/Scribe-Ai/raw/main/demo.mov]
 >
 > **What's demonstrated:**
 > - ✅ Sign up and authentication
