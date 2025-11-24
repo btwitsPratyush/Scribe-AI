@@ -131,10 +131,7 @@ sequenceDiagram
 
 ## 🎥 Video Walkthrough
 
-> **📹 Demo Video**: [## 🎥 Demo
-
-https://github.com/btwitspratyush/Scribe-Ai/raw/main/demo.mov]
->
+> **📹 Demo Video**: [https://github.com/btwitspratyush/Scribe-Ai/raw/main/docs/videos/demo.mp4]
 > **What's demonstrated:**
 > - ✅ Sign up and authentication
 > - ✅ Start mic recording with real-time transcription
