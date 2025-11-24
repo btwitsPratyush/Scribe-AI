@@ -131,7 +131,7 @@ sequenceDiagram
 
 ## 🎥 Video Walkthrough
 
-> **📹 Demo Video**: [will post soon]
+> **📹 Demo Video**: [https://github.com/btwitspratyush/Scribe-Ai/raw/main/demo.mov]
 >
 > **What's demonstrated:**
 > - ✅ Sign up and authentication
@@ -380,16 +380,6 @@ npm run build
 ## 📄 License
 
 MIT License - see LICENSE file for details
-
-## 🙏 Acknowledgments
-
-- [Next.js](https://nextjs.org/) - React framework
-- [Socket.io](https://socket.io/) - Real-time communication
-- [Google Gemini](https://ai.google.dev/) - AI transcription and summarization
-- [Prisma](https://www.prisma.io/) - Database ORM
-- [Better Auth](https://www.better-auth.com/) - Authentication
-- [XState](https://xstate.js.org/) - State management
-- [Shadcn UI](https://ui.shadcn.com/) - UI components
 
 ## 📧 Support
 
