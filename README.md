@@ -131,15 +131,15 @@ sequenceDiagram
 
 ## 🎥 Video Walkthrough
 
-> **📹 Demo Video**: [https://github.com/btwitspratyush/Scribe-Ai/raw/main/docs/videos/demo.mp4]
-> **What's demonstrated:**
-> - ✅ Sign up and authentication
-> - ✅ Start mic recording with real-time transcription
-> - ✅ Pause/Resume functionality
-> - ✅ Stop recording and AI summary generation  
-> - ✅ Session save and transcript download
-> - ✅ View past sessions
+https://github.com/btwitspratyush/Scribe-Ai/raw/main/docs/videos/demo.mp4
 
+> **What's demonstrated:**
+> - ✅ Sign up and authentication  
+> - ✅ Start mic recording with real-time transcription  
+> - ✅ Pause/Resume functionality  
+> - ✅ Stop recording and AI summary generation  
+> - ✅ Session save and transcript download  
+> - ✅ View past sessions  
 ---
 
 ## 🚀 Quick Start
