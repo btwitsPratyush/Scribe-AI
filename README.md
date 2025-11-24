@@ -12,6 +12,21 @@ A comprehensive full-stack application for capturing and transcribing audio sess
 - **Session Management**: View, search, filter, and download past sessions
 - **Modern UI**: Responsive design with dark mode support
 
+## 📸 Screenshots
+
+### Landing Page
+![Landing Page](docs/screenshots/landing-page.png)
+*Neo-Brutalist design with bold typography and vibrant colors*
+
+### Sign Up
+![Sign Up](docs/screenshots/signup.png)
+*Quick account creation to get started*
+
+### Live Recording Interface
+![Recording Interface](docs/screenshots/live-preview.png)
+*Real-time transcription with status tracking and session management*
+
+
 ## 🏗️ Architecture
 
 ### System Overview
