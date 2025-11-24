@@ -26,18 +26,17 @@ export default function LandingPage() {
   // Typewriter effect
   useEffect(() => {
     const phrases = [
-      { type: 'speaker', content: "Speaker" },
       { type: 'text', content: " so looking at the quarterly roadmap..." },
       { type: 'pause', duration: 1000 },
       { type: 'text', content: " we need to prioritize the backend migration." },
       { type: 'pause', duration: 800 },
       { type: 'newline' },
-      { type: 'speaker', content: "Speaker" },
+      // { type: 'speaker', content: "Speaker" },
       { type: 'text', content: "I agree. The latency on the current server is getting too high." },
       { type: 'pause', duration: 1500 },
       { type: 'text', content: " especially during peak hours." },
       { type: 'newline' },
-      { type: 'speaker', content: "Speaker" },
+      // { type: 'speaker', content: "Speaker" },
       { type: 'text', content: "Exactly. Scribe AI should help us document these decisions automatically." }
     ];
 

@@ -23,8 +23,14 @@ A comprehensive full-stack application for capturing and transcribing audio sess
 *Quick account creation to get started*
 
 ### Live Recording Interface
-![Recording Interface](docs/screenshots/live-preview.png)
-*Real-time transcription with status tracking and session management*
+
+**Recording with Pause Control**
+![Recording - Active](docs/screenshots/recording-pause.png)
+*Real-time transcription in progress with pause functionality*
+
+**Paused State with Resume**
+![Recording - Paused](docs/screenshots/recording-resume.png)
+*Session paused - resume or stop recording*
 
 
 ## 🏗️ Architecture
