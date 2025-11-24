@@ -129,9 +129,13 @@ sequenceDiagram
    - **Reason**: Low latency while avoiding excessive network requests
    - **For 1hr sessions**: ~360 chunks, manageable with proper buffering
 
-## 🎥 Video Walkthrough:()
+## 🎥 Video Walkthrough
+
+> **📹 Demo Video**: [Watch Walkthrough](docs/videos/demo.mp4)
+>
+> *Note: Download the video to view if it doesn't play directly in your browser.*
+>
 > **What's demonstrated:**
-> - ✅ Sign up and authentication  
 > - ✅ Start mic recording with real-time transcription  
 > - ✅ Pause/Resume functionality  
 > - ✅ Stop recording and AI summary generation  
