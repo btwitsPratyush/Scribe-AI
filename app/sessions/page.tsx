@@ -48,7 +48,7 @@ export default function SessionsPage() {
     try {
       setLoading(true);
       setError(null);
-      
+
       const params = new URLSearchParams();
       if (status && status !== "all") {
         params.append("status", status);
@@ -57,18 +57,18 @@ export default function SessionsPage() {
       params.append("offset", offset.toString());
 
       const response = await fetch(`/api/sessions?${params.toString()}`);
-      
+
       if (response.status === 401) {
         // Not authenticated, redirect to login
         window.location.href = "/login";
         return;
       }
-      
+
       if (!response.ok) {
         const errorData = await response.json().catch(() => ({}));
         throw new Error(errorData.error || `Error: ${response.status}`);
       }
-      
+
       const data: SessionsResponse = await response.json();
       setSessions(data.sessions || []);
       setPagination(data.pagination || { total: 0, limit: 20, offset: 0, hasMore: false });
@@ -94,16 +94,21 @@ export default function SessionsPage() {
   });
 
   const getStatusBadge = (status: string) => {
-    const variants: Record<string, { variant: "default" | "secondary" | "destructive" | "outline"; label: string }> = {
-      recording: { variant: "default", label: "Recording" },
-      paused: { variant: "secondary", label: "Paused" },
-      processing: { variant: "secondary", label: "Processing" },
-      completed: { variant: "default", label: "Completed" },
-      error: { variant: "destructive", label: "Error" },
+    const styles: Record<string, string> = {
+      recording: "bg-red-500 text-white animate-pulse",
+      paused: "bg-yellow-400 text-black",
+      processing: "bg-blue-400 text-black",
+      completed: "bg-[#39ff14] text-black",
+      error: "bg-red-600 text-white",
     };
-    
-    const config = variants[status] || { variant: "outline" as const, label: status };
-    return <Badge variant={config.variant}>{config.label}</Badge>;
+
+    const style = styles[status] || "bg-gray-200 text-black";
+
+    return (
+      <span className={`px-2 py-1 border-2 border-black text-xs font-black uppercase ${style}`}>
+        {status}
+      </span>
+    );
   };
 
   const formatDuration = (seconds: number | null) => {
@@ -147,130 +152,150 @@ export default function SessionsPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100 dark:from-gray-950 dark:to-gray-900 p-4 md:p-8">
-      <div className="max-w-7xl mx-auto space-y-6">
+    <div className="min-h-screen bg-[#F4F4F0] p-4 md:p-8 font-sans">
+      <div className="max-w-7xl mx-auto space-y-8">
         {/* Header */}
-        <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+        <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-6 border-b-4 border-black pb-6">
           <div>
-            <h1 className="text-4xl font-bold text-gray-900 dark:text-white mb-2">
+            <h1 className="text-5xl font-black tracking-tighter uppercase mb-2">
               Your Sessions
             </h1>
-            <p className="text-gray-600 dark:text-gray-400">
-              View and manage your transcription sessions
+            <p className="text-xl font-bold text-gray-600">
+              Manage your recordings & transcripts
             </p>
           </div>
           <Link href="/recording">
-            <Button size="lg">Start New Recording</Button>
+            <button className="bg-[#39ff14] border-2 border-black px-6 py-3 font-black uppercase text-lg shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] hover:translate-x-[2px] hover:translate-y-[2px] hover:shadow-none transition-all">
+              + Start New Session
+            </button>
           </Link>
         </div>
 
         {/* Filters */}
-        <Card>
-          <CardContent className="pt-6">
-            <div className="flex flex-col md:flex-row gap-4">
-              <div className="flex-1 relative">
-                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
-                <Input
-                  placeholder="Search sessions..."
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                  className="pl-10"
-                />
-              </div>
-              <Select value={statusFilter} onValueChange={setStatusFilter}>
-                <SelectTrigger className="w-full md:w-[200px]">
-                  <SelectValue placeholder="Filter by status" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">All Statuses</SelectItem>
-                  <SelectItem value="completed">Completed</SelectItem>
-                  <SelectItem value="recording">Recording</SelectItem>
-                  <SelectItem value="processing">Processing</SelectItem>
-                  <SelectItem value="paused">Paused</SelectItem>
-                  <SelectItem value="error">Error</SelectItem>
-                </SelectContent>
-              </Select>
+        <div className="bg-white border-2 border-black p-4 shadow-[4px_4px_0px_0px_rgba(0,0,0,1)]">
+          <div className="flex flex-col md:flex-row gap-4">
+            <div className="flex-1 relative">
+              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-black w-5 h-5" />
+              <Input
+                placeholder="SEARCH SESSIONS..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="pl-10 border-2 border-black rounded-none focus:ring-0 focus:border-black font-bold placeholder:text-gray-400 uppercase"
+              />
             </div>
-          </CardContent>
-        </Card>
+            <Select value={statusFilter} onValueChange={setStatusFilter}>
+              <SelectTrigger className="w-full md:w-[250px] border-2 border-black rounded-none font-bold uppercase focus:ring-0 shadow-none">
+                <SelectValue placeholder="FILTER BY STATUS" />
+              </SelectTrigger>
+              <SelectContent className="border-2 border-black rounded-none">
+                <SelectItem value="all" className="font-bold uppercase focus:bg-[#39ff14] focus:text-black">All Statuses</SelectItem>
+                <SelectItem value="completed" className="font-bold uppercase focus:bg-[#39ff14] focus:text-black">Completed</SelectItem>
+                <SelectItem value="recording" className="font-bold uppercase focus:bg-[#39ff14] focus:text-black">Recording</SelectItem>
+                <SelectItem value="processing" className="font-bold uppercase focus:bg-[#39ff14] focus:text-black">Processing</SelectItem>
+                <SelectItem value="paused" className="font-bold uppercase focus:bg-[#39ff14] focus:text-black">Paused</SelectItem>
+                <SelectItem value="error" className="font-bold uppercase focus:bg-[#39ff14] focus:text-black">Error</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+        </div>
 
         {/* Sessions Grid */}
         {filteredSessions.length === 0 ? (
-          <Card>
-            <CardContent className="pt-6 text-center py-12">
-              <FileText className="w-16 h-16 text-gray-400 mx-auto mb-4" />
-              <p className="text-gray-600 dark:text-gray-400 text-lg">
-                {searchQuery ? "No sessions match your search." : "No sessions recorded yet."}
-              </p>
-              {!searchQuery && (
-                <Link href="/recording">
-                  <Button className="mt-4">Start Your First Recording</Button>
-                </Link>
-              )}
-            </CardContent>
-          </Card>
+          <div className="bg-white border-2 border-black p-12 text-center shadow-[8px_8px_0px_0px_rgba(0,0,0,1)]">
+            <FileText className="w-20 h-20 text-black mx-auto mb-6 stroke-1" />
+            <p className="text-2xl font-bold uppercase mb-6">
+              {searchQuery ? "NO MATCHES FOUND" : "NO SESSIONS YET"}
+            </p>
+            {!searchQuery && (
+              <Link href="/recording">
+                <button className="bg-black text-white border-2 border-black px-8 py-4 font-black uppercase text-xl hover:bg-[#39ff14] hover:text-black transition-colors">
+                  START RECORDING
+                </button>
+              </Link>
+            )}
+          </div>
         ) : (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
             {filteredSessions.map((session) => (
-              <Card key={session.id} className="flex flex-col hover:shadow-lg transition-shadow">
-                <CardHeader>
-                  <div className="flex items-start justify-between gap-2">
-                    <CardTitle className="text-lg line-clamp-2 flex-1">
-                      {session.title}
-                    </CardTitle>
-                    {getStatusBadge(session.status)}
-                  </div>
-                  <CardDescription className="flex items-center gap-4 mt-2">
-                    <span className="flex items-center gap-1 text-xs">
-                      <Clock className="w-3 h-3" />
+              <div key={session.id} className="bg-white border-2 border-black p-0 flex flex-col shadow-[6px_6px_0px_0px_rgba(0,0,0,1)] hover:translate-x-[-2px] hover:translate-y-[-2px] hover:shadow-[8px_8px_0px_0px_rgba(0,0,0,1)] transition-all">
+                <div className="p-4 border-b-2 border-black bg-gray-50 flex justify-between items-start gap-4">
+                  <h3 className="font-bold text-lg leading-tight uppercase line-clamp-2">
+                    {session.title}
+                  </h3>
+                  {getStatusBadge(session.status)}
+                </div>
+
+                <div className="p-4 flex-1 flex flex-col gap-4">
+                  <div className="flex items-center gap-4 text-sm font-bold text-gray-500 uppercase">
+                    <span className="flex items-center gap-1">
+                      <Clock className="w-4 h-4" />
                       {formatDistanceToNow(new Date(session.createdAt), { addSuffix: true })}
                     </span>
                     {session.recordingType && (
-                      <span className="flex items-center gap-1 text-xs">
-                        {session.recordingType === "mic" ? (
-                          <Mic className="w-3 h-3" />
-                        ) : (
-                          <Monitor className="w-3 h-3" />
-                        )}
+                      <span className="flex items-center gap-1">
+                        {session.recordingType === "mic" ? <Mic className="w-4 h-4" /> : <Monitor className="w-4 h-4" />}
                         {session.recordingType}
                       </span>
                     )}
-                  </CardDescription>
-                </CardHeader>
-                <CardContent className="flex-1 flex flex-col">
-                  {session.summary && (
-                    <p className="text-sm text-gray-700 dark:text-gray-300 line-clamp-3 mb-4 flex-1">
-                      {session.summary}
-                    </p>
-                  )}
-                  <div className="flex items-center justify-between pt-4 border-t">
-                    <div className="text-xs text-gray-500 dark:text-gray-400">
-                      Duration: {formatDuration(session.duration)}
-                    </div>
-                    {session.status === "completed" && (
-                      <Button asChild variant="outline" size="sm" className="gap-2">
-                        <a href={`/api/sessions/${session.id}/download`} download>
-                          <Download className="w-4 h-4" />
-                          Download
-                        </a>
-                      </Button>
-                    )}
                   </div>
-                </CardContent>
-              </Card>
+
+                  {session.summary && (
+                    <div className="bg-[#f0f0f0] p-3 border-2 border-black text-sm font-medium line-clamp-4">
+                      {session.summary}
+                    </div>
+                  )}
+
+                  <div className="mt-auto pt-4 flex items-center justify-between gap-2">
+                    <div className="font-black text-sm uppercase">
+                      {formatDuration(session.duration)}
+                    </div>
+
+                    <div className="flex gap-2">
+                      {session.status === "completed" && (
+                        <a href={`/api/sessions/${session.id}/download`} download>
+                          <button className="p-2 border-2 border-black bg-white hover:bg-[#39ff14] transition-colors" title="Download">
+                            <Download className="w-4 h-4" />
+                          </button>
+                        </a>
+                      )}
+                      <button
+                        className="p-2 border-2 border-black bg-white hover:bg-red-500 hover:text-white transition-colors"
+                        title="Delete"
+                        onClick={async (e) => {
+                          e.preventDefault();
+                          if (!confirm("DELETE THIS SESSION?")) return;
+                          try {
+                            const res = await fetch(`/api/sessions/${session.id}`, { method: "DELETE" });
+                            if (res.ok) {
+                              setSessions(sessions.filter(s => s.id !== session.id));
+                            } else {
+                              alert("Failed to delete");
+                            }
+                          } catch (err) {
+                            console.error(err);
+                            alert("Failed to delete");
+                          }
+                        }}
+                      >
+                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M3 6h18" /><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6" /><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2" /></svg>
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              </div>
             ))}
           </div>
         )}
 
         {/* Pagination */}
         {pagination && pagination.hasMore && (
-          <div className="flex justify-center">
-            <Button
+          <div className="flex justify-center pt-8">
+            <button
               onClick={() => fetchSessions(statusFilter, pagination.offset + pagination.limit)}
-              variant="outline"
+              className="bg-white border-2 border-black px-8 py-3 font-bold uppercase shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] hover:bg-gray-100"
             >
               Load More
-            </Button>
+            </button>
           </div>
         )}
       </div>

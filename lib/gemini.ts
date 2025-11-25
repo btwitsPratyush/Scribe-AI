@@ -10,7 +10,7 @@ if (!process.env.GEMINI_API_KEY) {
   // Don't throw, just warn - allow server to start without it
 }
 
-const genAI = process.env.GEMINI_API_KEY 
+const genAI = process.env.GEMINI_API_KEY
   ? new GoogleGenerativeAI(process.env.GEMINI_API_KEY)
   : null;
 
@@ -32,19 +32,11 @@ export function getTextModel() {
  */
 export async function generateSummary(transcript: string): Promise<string> {
   const model = getTextModel();
-  
-  const prompt = `You are an AI assistant that summarizes meeting transcripts. Analyze the following transcript and provide a comprehensive summary with the following structure:
 
-1. **Key Points**: List the main topics and decisions discussed
-2. **Action Items**: Extract any tasks, assignments, or follow-ups mentioned
-3. **Decisions Made**: Document any decisions or conclusions reached
-4. **Participants**: Identify speakers if mentioned
-5. **Next Steps**: Outline any planned future actions
+  const prompt = `Summarize this meeting: key points, action items, decisions.
 
 Transcript:
-${transcript}
-
-Provide a well-formatted summary:`;
+${transcript}`;
 
   try {
     const result = await model.generateContent(prompt);

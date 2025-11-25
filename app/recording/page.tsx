@@ -286,6 +286,7 @@ export default function RecordingPage() {
     s.on("error", (err) => {
       const message = typeof err === "string" ? err : err.message || "Socket Error";
       toast.error(message);
+      send({ type: "ERROR", message });
     });
   }, [send]);
 
@@ -293,11 +294,12 @@ export default function RecordingPage() {
     connectSocket();
     return () => {
       if (socketRef.current) {
+        socketRef.current.emit("stop-transcription", { duration: state.context.duration });
         socketRef.current.disconnect();
         socketRef.current = null;
       }
     };
-  }, [connectSocket]);
+  }, [connectSocket, state.context.duration]);
 
   /*  Duration Tracking */
   useEffect(() => {
@@ -438,7 +440,7 @@ export default function RecordingPage() {
 
       mr.start(2000);
 
-      const activeUserId = manualUserId || "guest_user_123";
+      const activeUserId = manualUserId === "guest_user_123" ? null : manualUserId;
       socketRef.current?.emit("start-transcription", {
         userId: activeUserId,
         recordingType: type,
@@ -469,7 +471,7 @@ export default function RecordingPage() {
     });
     streamsRef.current = [];
     send({ type: "STOP" });
-    socketRef.current?.emit("stop-transcription");
+    socketRef.current?.emit("stop-transcription", { duration: state.context.duration });
   };
 
   const formatDuration = (seconds: number) => {
@@ -494,7 +496,12 @@ export default function RecordingPage() {
         </div>
       </div>
 
-      <div className="absolute top-8 right-8 z-20">
+      <div className="absolute top-8 right-8 z-20 flex gap-4">
+        <Link href="/sessions">
+          <button className="bg-white border-2 border-black px-4 py-2 font-bold uppercase text-sm shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] hover:bg-gray-100 transition-colors text-black">
+            VIEW SESSIONS
+          </button>
+        </Link>
         <Link href="/">
           <button className="bg-red-600 border-2 border-black px-4 py-2 font-bold uppercase text-sm shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] hover:bg-red-500 transition-colors text-white">
             ← EXIT

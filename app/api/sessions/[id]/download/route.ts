@@ -3,9 +3,10 @@ import { prisma } from "@/lib/prisma";
 
 export async function GET(
     req: NextRequest,
-    { params }: { params: { id: string } }
+    props: { params: Promise<{ id: string }> }
 ) {
     try {
+        const params = await props.params;
         const sessionId = params.id;
 
         const session = await prisma.session.findUnique({
@@ -32,7 +33,7 @@ export async function GET(
     } catch (error) {
         console.error("Download error:", error);
         return NextResponse.json(
-            { error: "Failed to download transcript" },
+            { error: "Failed to download transcript", details: error instanceof Error ? error.message : String(error) },
             { status: 500 }
         );
     }

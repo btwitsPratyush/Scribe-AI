@@ -1,3 +1,4 @@
+import "dotenv/config";
 import http from "http";
 import { Server, Socket } from "socket.io";
 import { prisma } from "../lib/prisma";
@@ -50,10 +51,13 @@ io.on("connection", (socket: Socket) => {
   });
 
   // Stop session & save
-  socket.on("stop-transcription", async () => {
+  socket.on("stop-transcription", async (data: { duration?: number } = {}) => {
     console.log("📥 Received stop-transcription event");
     console.log("📝 Session ID:", currentSessionId);
     console.log("📄 Transcription length:", currentTranscription.length);
+
+    // Broadcast processing state immediately
+    socket.emit("processing");
 
     if (!currentSessionId) {
       console.error("❌ No active session ID");
@@ -73,6 +77,7 @@ io.on("connection", (socket: Socket) => {
           transcript: currentTranscription.trim(),
           summary: summary,
           status: "completed",
+          duration: data.duration || 0, // Save duration
         },
       });
       console.log("✅ Session saved:", saved.id);
