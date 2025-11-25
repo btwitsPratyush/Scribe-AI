@@ -24,7 +24,7 @@ importers:
         specifier: ^7.0.0
         version: 7.0.0
       '@prisma/client':
-        specifier: ^5.15.0
+        specifier: 5.22.0
         version: 5.22.0(prisma@5.22.0)
       '@radix-ui/react-accordion':
         specifier: 1.2.2
@@ -161,9 +161,6 @@ importers:
       oslo:
         specifier: ^1.2.1
         version: 1.2.1
-      prisma:
-        specifier: ^5.15.0
-        version: 5.22.0
       react:
         specifier: 19.2.0
         version: 19.2.0
@@ -231,6 +228,9 @@ importers:
       postcss:
         specifier: ^8.5
         version: 8.5.6
+      prisma:
+        specifier: 5.22.0
+        version: 5.22.0
       tailwindcss:
         specifier: ^4.1.9
         version: 4.1.17
