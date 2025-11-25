@@ -44,6 +44,6 @@ export async function GET(req: Request) {
     }, { status: 200 });
   } catch (err) {
     console.error("SESSION FETCH ERROR", err);
-    return NextResponse.json({ error: "Server error" }, { status: 500 });
+    return NextResponse.json({ error: "Server error", details: err instanceof Error ? err.message : String(err) }, { status: 500 });
   }
 }

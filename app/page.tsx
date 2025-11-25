@@ -130,7 +130,7 @@ export default function LandingPage() {
             <div className="hidden md:flex items-center gap-6">
               <Link href="#features" className="font-bold text-charcoal hover:underline decoration-4 decoration-neon-green underline-offset-4">Features</Link>
               <Link href="#demo" className="font-bold text-charcoal hover:underline decoration-4 decoration-neon-green underline-offset-4">Live Demo</Link>
-              <Link href="#pricing" className="font-bold text-charcoal hover:underline decoration-4 decoration-neon-green underline-offset-4"></Link>
+              <Link href="/sessions" className="font-bold text-charcoal hover:underline decoration-4 decoration-neon-green underline-offset-4">Sessions</Link>
               <Link href="/signup">
                 <button className="neo-btn px-6 py-2 text-sm">Get Started</button>
               </Link>
@@ -155,6 +155,7 @@ export default function LandingPage() {
             <div className="flex flex-col gap-4">
               <Link href="#features" className="font-bold text-xl uppercase">Features</Link>
               <Link href="#demo" className="font-bold text-xl uppercase">Live Demo</Link>
+              <Link href="/sessions" className="font-bold text-xl uppercase">Sessions</Link>
               <Link href="/signup">
                 <button className="bg-white border-2 border-charcoal p-3 font-bold shadow-neo-sm text-left w-full">Get Started</button>
               </Link>
