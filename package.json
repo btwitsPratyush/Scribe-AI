@@ -14,7 +14,7 @@
     ]
   },
   "scripts": {
-    "build": "next build",
+    "build": "prisma generate && next build",
     "dev": "next dev",
     "dev:all": "concurrently \"npm run dev\" \"npm run start-socket-server\"",
     "lint": "eslint .",
