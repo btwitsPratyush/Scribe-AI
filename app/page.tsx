@@ -175,7 +175,7 @@ export default function LandingPage() {
               <div className="inline-block bg-charcoal text-white px-3 py-1 text-sm font-bold mb-6 border-2 border-neon-green transform -rotate-2">
                 🚀 V 2.0 IS LIVE
               </div>
-              <h1 className="text-6xl lg:text-8xl font-bold leading-[0.9] tracking-tighter mb-6">
+              <h1 className="text-4xl md:text-6xl lg:text-8xl font-bold leading-[0.9] tracking-tighter mb-6">
                 TURN SPEECH<br />
                 INTO <span className="bg-neon-green px-2 border-b-4 border-charcoal text-charcoal">SUPERPOWERS.</span>
               </h1>
