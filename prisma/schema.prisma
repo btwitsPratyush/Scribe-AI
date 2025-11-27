@@ -20,8 +20,8 @@ model User {
 model Session {
   id             String   @id @default(cuid())
   title          String?
-  transcript     String?  @db.Text
-  summary        String?  @db.Text
+  transcript     String?
+  summary        String?
   status         String   @default("pending")
   recordingType  String?
   duration       Int?     @default(0)
