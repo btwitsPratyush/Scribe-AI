@@ -14,14 +14,15 @@
     ]
   },
   "scripts": {
-    "build": "prisma generate && next build",
+    "build": "prisma generate && next build && npm run build:server",
+    "build:server": "tsc --project tsconfig.server.json",
     "clean-ports": "lsof -ti:3000,3001 | xargs kill -9 || true",
     "dev": "npm run clean-ports && tsx watch server/index.ts",
     "dev:next": "next dev",
     "dev:all": "npm run dev",
     "lint": "eslint .",
     "start": "next start",
-    "start-socket-server": "tsx server/index.ts",
+    "start-socket-server": "node server-dist/server/index.js",
     "db:generate": "prisma generate",
     "db:migrate": "prisma migrate dev",
     "db:studio": "prisma studio"
