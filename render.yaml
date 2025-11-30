@@ -2,7 +2,7 @@ services:
   - type: web
     name: scribe-ai-backend
     env: node
-    buildCommand: npm install
+    buildCommand: npm install && npm run build
     startCommand: npm run start-socket-server
     envVars:
       - key: GEMINI_API_KEY

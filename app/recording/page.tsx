@@ -245,39 +245,77 @@ export default function RecordingPage() {
   /* ---------------------- Socket Lifecycle ---------------------- */
   const connectSocket = useCallback(() => {
     const socketUrl = process.env.NEXT_PUBLIC_SOCKET_URL || "http://localhost:3001";
-    if (socketRef.current) return;
 
-    const s = io(socketUrl, {
+    if (socketRef.current?.connected) {
+      console.log("✅ Socket already connected");
+      return;
+    }
+
+    if (socketRef.current) {
+      socketRef.current.disconnect();
+      socketRef.current = null;
+    }
+
+    console.log("🔌 Connecting to socket server:", socketUrl);
+    const opts: any = {
       transports: ["websocket", "polling"],
       reconnection: true,
-    });
+      reconnectionDelay: 1000,
+      reconnectionAttempts: 5,
+    };
 
+    const s = io(socketUrl, opts);
     socketRef.current = s;
 
     s.on("connect", () => {
-      console.log("✅ Socket connected");
+      console.log("✅ Socket connected:", s.id);
       toast.success("Connected to transcription service");
     });
 
+    s.on("disconnect", (reason) => {
+      console.warn("⚠️ Socket disconnected:", reason);
+      if (reason === "io server disconnect") {
+        // Server disconnected, reconnect manually
+        s.connect();
+      }
+    });
+
+    s.on("connect_error", (error) => {
+      console.error("❌ Socket connection error:", error);
+      toast.error("Failed to connect to transcription service. Make sure the server is running.");
+    });
+
     s.on("session-started", (data: { sessionId: string }) => {
+      console.log("📝 Session started:", data.sessionId);
       send({ type: "SESSION_STARTED", sessionId: data.sessionId });
     });
 
     s.on("transcription", (data: { text: string }) => {
-      if (data.text) send({ type: "TRANSCRIBE", text: data.text });
+      if (data.text && data.text.trim()) {
+        console.log("📄 Received transcription:", data.text.substring(0, 50));
+        send({ type: "TRANSCRIBE", text: data.text });
+      }
+    });
+
+    s.on("processing", () => {
+      console.log("⚙️ Processing started");
+      toast.info("Processing transcription...");
     });
 
     s.on("completed", (payload) => {
+      console.log("✅ Session completed:", payload);
       send({
         type: "COMPLETED",
         sessionId: payload.sessionId,
         downloadUrl: payload.downloadUrl,
         summary: payload.summary,
       });
+      toast.success("Session saved successfully!");
     });
 
     s.on("error", (err) => {
       const message = typeof err === "string" ? err : err.message || "Socket Error";
+      console.error("❌ Socket error:", message);
       toast.error(message);
       send({ type: "ERROR", message });
     });
@@ -349,16 +387,35 @@ export default function RecordingPage() {
     const socketInstance = socketRef.current;
     console.log("🔌 Socket status:", socketInstance ? (socketInstance.connected ? "Connected" : "Disconnected") : "Null");
 
-    if (!socketInstance || !socketInstance.connected) {
-      console.warn("⚠️ Socket not connected, attempting reconnect...");
-      toast.error("Realtime service not connected. Please wait and try again.");
-      if (!socketInstance) {
-        connectSocket();
-      } else if (socketInstance.disconnected) {
-        socketInstance.connect();
-      }
-      return;
+    // Ensure socket is connected before starting recording
+    if (!socketInstance) {
+      console.log("🔌 No socket instance, connecting...");
+      connectSocket();
+      // Wait a bit for connection
+      await new Promise(resolve => setTimeout(resolve, 500));
     }
+
+    if (!socketRef.current || !socketRef.current.connected) {
+      if (socketRef.current?.disconnected) {
+        console.log("🔌 Reconnecting socket...");
+        socketRef.current.connect();
+        // Wait for connection with timeout
+        let attempts = 0;
+        while (!socketRef.current.connected && attempts < 10) {
+          await new Promise(resolve => setTimeout(resolve, 200));
+          attempts++;
+        }
+      }
+
+      if (!socketRef.current?.connected) {
+        console.error("❌ Socket still not connected after retry");
+        toast.error("Cannot connect to transcription service. Please check if the server is running on port 3001.");
+        send({ type: "ERROR", message: "Socket connection failed" });
+        return;
+      }
+    }
+
+    console.log("✅ Socket confirmed connected, proceeding with recording...");
 
     try {
       let finalStream: MediaStream;
@@ -433,7 +490,7 @@ export default function RecordingPage() {
             if (event.results[i].isFinal) final += event.results[i][0].transcript + " ";
           }
           if (final.trim()) {
-            send({ type: "TRANSCRIBE", text: "\n" + final.trim() });
+            // send({ type: "TRANSCRIBE", text: "\n" + final.trim() });
             socketRef.current?.emit("transcription", { text: final.trim() });
           }
         };
@@ -455,20 +512,39 @@ export default function RecordingPage() {
       mediaRecorderRef.current = mr;
 
       mr.ondataavailable = (e) => {
-        if (e.data.size > 0 && socketRef.current?.connected) {
-          const reader = new FileReader();
-          reader.onloadend = () => {
-            if (!reader.result || typeof reader.result !== "string") return;
-            socketRef.current?.emit("audio-chunk", {
-              dataUrl: reader.result,
-              mimeType: e.data.type || mr.mimeType || preferredMime,
-              timestamp: Date.now(),
-            });
-          };
-          reader.readAsDataURL(e.data);
+        if (e.data.size > 0) {
+          console.log(`📦 Audio chunk received: ${e.data.size} bytes`);
+          if (socketRef.current?.connected) {
+            const reader = new FileReader();
+            reader.onloadend = () => {
+              if (!reader.result || typeof reader.result !== "string") {
+                console.warn("⚠️ Failed to read audio chunk as data URL");
+                return;
+              }
+              console.log(`📤 Sending audio chunk to server (${reader.result.length} chars)`);
+              socketRef.current?.emit("audio-chunk", {
+                dataUrl: reader.result,
+                mimeType: e.data.type || mr.mimeType || preferredMime,
+                timestamp: Date.now(),
+              });
+            };
+            reader.onerror = (err) => {
+              console.error("❌ Error reading audio chunk:", err);
+            };
+            reader.readAsDataURL(e.data);
+          } else {
+            console.warn("⚠️ Socket not connected, skipping audio chunk");
+          }
         }
       };
 
+      mr.onerror = (err) => {
+        console.error("❌ MediaRecorder error:", err);
+        toast.error("Recording error occurred");
+        send({ type: "ERROR", message: "MediaRecorder error" });
+      };
+
+      console.log("🎙️ Starting MediaRecorder with interval: 5000ms");
       mr.start(5000);
 
       const activeUserId = manualUserId === "guest_user_123" ? null : manualUserId;

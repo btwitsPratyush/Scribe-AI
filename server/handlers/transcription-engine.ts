@@ -72,7 +72,7 @@ function transcodeToWav(inputPath: string): Promise<string> {
         reject(new Error(`ffmpeg exited with code ${code}`));
       }
     });
-    
+
     ff.on("error", (err) => {
       reject(new Error(`ffmpeg failed to start: ${err.message}`));
     });
@@ -86,7 +86,7 @@ function transcodeToWav(inputPath: string): Promise<string> {
 async function callGeminiTranscribe(wavPath: string): Promise<string> {
   const apiKey = process.env.GEMINI_API_KEY;
   // Default to Gemini 1.5 Flash if not set
-  const model = process.env.GEMINI_MODEL || "gemini-1.5-flash"; 
+  const model = process.env.GEMINI_MODEL || "gemini-1.5-flash";
   const endpoint = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`;
 
   if (!apiKey) {
@@ -127,7 +127,7 @@ async function callGeminiTranscribe(wavPath: string): Promise<string> {
   }
 
   const json: any = await res.json();
-  
+
   // Extract text from Gemini response
   const transcript = json.candidates?.[0]?.content?.parts?.[0]?.text;
 
@@ -164,14 +164,14 @@ export function createGeminiTranscriber({
       buffers.push(chunk);
       // Gemini REST API does not support real-time streaming partials easily.
       // We send a status update so the UI knows data is being received.
-      onPartial(" (Recording... Transcription will appear after Stop) ");
+      // onPartial(" (Recording... Transcription will appear after Stop) ");
     },
 
     async stop() {
       try {
         if (buffers.length === 0) {
-           onFinal("[No audio data received]");
-           return "";
+          onFinal("[No audio data received]");
+          return "";
         }
 
         // 1) Write to temp
