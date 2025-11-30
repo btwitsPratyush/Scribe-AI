@@ -54,19 +54,16 @@ const recordingMachine = setup({
       }
       return {};
     }),
-
     setUserId: assign(({ event }: { event: RecordingEvent }) => {
       if (event.type === "SET_USER_ID") return { userId: event.userId };
       return {};
     }),
-
     appendTranscription: assign(({ context, event }: { context: RecordingContext; event: RecordingEvent }) => {
       if (event.type === "TRANSCRIBE") {
         return { transcription: context.transcription + " " + event.text };
       }
       return {};
     }),
-
     handleCompletion: assign(({ event }: { event: RecordingEvent }) => {
       if (event.type === "COMPLETED") {
         return {
@@ -77,7 +74,6 @@ const recordingMachine = setup({
       }
       return {};
     }),
-
     loadSessionData: assign(({ event }: { event: RecordingEvent }) => {
       if (event.type === "LOAD_SESSION") {
         return {
@@ -90,14 +86,12 @@ const recordingMachine = setup({
       }
       return {};
     }),
-
     setError: assign(({ event }: { event: RecordingEvent }) => {
       if (event.type === "ERROR") {
         return { error: event.message };
       }
       return {};
     }),
-
     resetState: assign(() => ({
       transcription: "",
       error: null,
@@ -107,12 +101,10 @@ const recordingMachine = setup({
       summary: null,
       duration: 0,
     })),
-
     setSessionId: assign(({ event }: { event: RecordingEvent }) => {
       if (event.type === "SESSION_STARTED") return { sessionId: event.sessionId };
       return {};
     }),
-
     incrementDuration: assign(({ context }) => ({
       duration: context.duration + 1,
     })),
@@ -181,6 +173,7 @@ const recordingMachine = setup({
     },
   },
 });
+
 
 /* ----------------------------- Component ----------------------------- */
 export default function RecordingPage() {
@@ -293,15 +286,31 @@ export default function RecordingPage() {
   useEffect(() => {
     connectSocket();
     return () => {
+      const currentSessionId = state.context.sessionId;
+      const currentDuration = state.context.duration;
+
       if (socketRef.current) {
-        socketRef.current.emit("stop-transcription", { duration: state.context.duration });
+        // FIX: Add a guard to prevent unnecessary "stop-transcription" requests 
+        // when no recording started (sessionId is null and duration is 0).
+        if (currentSessionId || currentDuration > 0) {
+          console.log(`[CLEANUP] Sending stop-transcription for session ID: ${currentSessionId || 'NULL (Cleanup after active recording)'}`);
+          socketRef.current.emit("stop-transcription", {
+            duration: currentDuration,
+            sessionId: currentSessionId
+          });
+        } else {
+          console.log("[CLEANUP] Skipping stop-transcription emission (No active session or data).");
+        }
+
         socketRef.current.disconnect();
         socketRef.current = null;
       }
     };
-  }, [connectSocket, state.context.duration]);
+    // FIX: Removed 'connectSocket' dependency to resolve ReferenceError, 
+    // relying on its stability via useCallback.
+  }, [state.context.duration, state.context.sessionId]);
 
-  /*  Duration Tracking */
+  /*  Duration Tracking */
   useEffect(() => {
     if (state.matches("recording")) {
       durationIntervalRef.current = setInterval(() => {
@@ -318,35 +327,30 @@ export default function RecordingPage() {
   /* ---------------------- Media Logic ---------------------- */
   const startMedia = async (type: "mic" | "tab" | "both") => {
     streamsRef.current = [];
-    // No strict checks, just try to start
     send({ type: "RESET" });
 
-    // Browser API checks
-    if (typeof window === 'undefined' || typeof navigator === 'undefined' || !navigator.mediaDevices) {
-      send({
-        type: "ERROR",
-        message: "Browser APIs not available. Please refresh the page."
-      });
-      toast.error("Browser not ready");
+    if (typeof window === 'undefined' || typeof navigator === 'undefined' || !navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+      const msg = "Browser APIs not available or unsupported. Please update browser/refresh.";
+      send({ type: "ERROR", message: msg });
+      toast.error(msg);
       return;
     }
 
-    // Secure context check (HTTPS or localhost)
     if (!window.isSecureContext) {
-      send({
-        type: "ERROR",
-        message: "Audio recording requires a secure context. Please access via localhost:3000 (not IP address) or use HTTPS."
-      });
-      toast.error("Please use localhost:3000");
+      const msg = "Audio recording requires a secure context (localhost or HTTPS).";
+      send({ type: "ERROR", message: msg });
+      toast.error(msg);
       return;
     }
 
-    if (!navigator.mediaDevices.getUserMedia) {
-      send({
-        type: "ERROR",
-        message: "Your browser doesn't support getUserMedia. Please update your browser."
-      });
-      toast.error("Browser too old");
+    const socketInstance = socketRef.current;
+    if (!socketInstance || !socketInstance.connected) {
+      toast.error("Realtime service not connected. Please wait and try again.");
+      if (!socketInstance) {
+        connectSocket();
+      } else if (socketInstance.disconnected) {
+        socketInstance.connect();
+      }
       return;
     }
 
@@ -388,8 +392,15 @@ export default function RecordingPage() {
           streamsRef.current.push(micStream);
           finalStream = micStream;
         } catch (e: any) {
-          console.error("Mic Access Error:", e);
-          throw e;
+          let errorMsg = "Failed to access microphone. ";
+          if (e.name === "NotAllowedError" || e.name === "PermissionDeniedError") {
+            errorMsg += "Permission denied. Allow microphone access in your browser settings.";
+          } else {
+            errorMsg += e.message || "Unknown error occurred.";
+          }
+          toast.error(errorMsg);
+          send({ type: "ERROR", message: errorMsg });
+          return;
         }
       }
 
@@ -425,33 +436,43 @@ export default function RecordingPage() {
         try { recognition.start(); } catch (e) { console.warn("Speech API start failed", e); }
       }
 
-      const mr = new MediaRecorder(finalStream);
+      const preferredMime = "audio/webm;codecs=opus";
+      const mrOptions = MediaRecorder.isTypeSupported(preferredMime)
+        ? { mimeType: preferredMime }
+        : undefined;
+      const mr = new MediaRecorder(finalStream, mrOptions);
       mediaRecorderRef.current = mr;
 
       mr.ondataavailable = (e) => {
         if (e.data.size > 0 && socketRef.current?.connected) {
           const reader = new FileReader();
           reader.onloadend = () => {
-            if (reader.result) socketRef.current?.emit("audio-chunk", reader.result);
+            if (!reader.result || typeof reader.result !== "string") return;
+            socketRef.current?.emit("audio-chunk", {
+              dataUrl: reader.result,
+              mimeType: e.data.type || mr.mimeType || preferredMime,
+              timestamp: Date.now(),
+            });
           };
           reader.readAsDataURL(e.data);
         }
       };
 
-      mr.start(2000);
+      mr.start(5000);
 
       const activeUserId = manualUserId === "guest_user_123" ? null : manualUserId;
+
+      console.log("🎬 Starting transcription session...");
       socketRef.current?.emit("start-transcription", {
         userId: activeUserId,
         recordingType: type,
         title: `Session ${new Date().toLocaleString()}`,
       });
 
+
     } catch (err: any) {
       console.error(err);
       streamsRef.current.forEach(s => s.getTracks().forEach(t => t.stop()));
-
-      // Simply toast the error, do NOT block the UI
       let msg = "Failed to start recording.";
       if (err.message) msg += ` (${err.message})`;
       toast.error(msg);
@@ -470,8 +491,14 @@ export default function RecordingPage() {
       stream.getTracks().forEach(track => track.stop());
     });
     streamsRef.current = [];
+
+    const payload = {
+      duration: state.context.duration,
+      sessionId: state.context.sessionId,
+    };
+
     send({ type: "STOP" });
-    socketRef.current?.emit("stop-transcription", { duration: state.context.duration });
+    socketRef.current?.emit("stop-transcription", payload);
   };
 
   const formatDuration = (seconds: number) => {
@@ -488,20 +515,13 @@ export default function RecordingPage() {
 
   return (
     <div className="min-h-screen bg-[#F4F4F0] p-4 md:p-8 relative overflow-hidden font-sans">
-
       {/* Decorative Stickers */}
       <div className="absolute top-8 left-8 hidden lg:block z-20">
         <div className="bg-[#39ff14] border-2 border-black px-4 py-2 font-black uppercase text-xs shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] rotate-[-6deg]">
           ⚡ Real-time Magic
         </div>
       </div>
-
       <div className="absolute top-8 right-8 z-20 flex gap-4">
-        <Link href="/sessions">
-          <button className="bg-white border-2 border-black px-4 py-2 font-bold uppercase text-sm shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] hover:bg-gray-100 transition-colors text-black">
-            VIEW SESSIONS
-          </button>
-        </Link>
         <Link href="/">
           <button className="bg-red-600 border-2 border-black px-4 py-2 font-bold uppercase text-sm shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] hover:bg-red-500 transition-colors text-white">
             ← EXIT
@@ -532,7 +552,7 @@ export default function RecordingPage() {
           <div className="w-full md:w-64 bg-[#121212] border-b-2 md:border-b-0 md:border-r-2 border-[#333] p-4 flex flex-col justify-between">
             <div>
               <div className="mb-6 flex items-center gap-2 text-gray-400">
-                <div className="text-[#39ff14] font-bold text-lg">ScribeAI</div>
+                <div className="text-[#39ff14] font-bold text-lg">Scribe AI</div>
                 <div className="text-xs">| Session #{sessionId ? sessionId.slice(-4) : 'NEW'}</div>
               </div>
 
@@ -627,37 +647,47 @@ export default function RecordingPage() {
             </div>
 
             {/* Bottom Controls */}
-            <div className="h-20 border-t border-[#222] bg-[#09090b] flex items-center justify-between px-6">
+            <div className="h-auto md:h-20 border-t border-[#222] bg-[#09090b] flex flex-col md:flex-row items-center justify-between px-4 md:px-6 py-4 md:py-0 gap-4 md:gap-0">
               <div className="text-gray-500 text-xs font-mono">
                 {state.matches("recording") ? formatDuration(state.context.duration) : "0:00"}
               </div>
 
-              <div className="flex items-center gap-3">
+              <div className="flex flex-wrap items-center justify-center gap-2 md:gap-3">
                 {state.matches("idle") ? (
                   <>
                     <button
                       onClick={() => startMedia("mic")}
-                      className="bg-[#111] text-gray-300 hover:text-white border border-[#333] hover:border-[#39ff14] px-6 py-3 rounded text-xs font-bold uppercase transition-all flex items-center gap-2"
+                      className="bg-[#111] text-gray-300 hover:text-white border border-[#333] hover:border-[#39ff14] px-4 md:px-6 py-2 md:py-3 rounded text-xs font-bold uppercase transition-all flex items-center gap-2"
                     >
                       <Mic size={14} /> Mic Only
                     </button>
 
                     <div className="relative group">
                       <button
-                        disabled
-                        className="bg-[#111] text-gray-600 border border-[#333] px-6 py-3 rounded text-xs font-bold uppercase cursor-not-allowed flex items-center gap-2"
+                        onClick={() => startMedia("tab")}
+                        className="bg-[#111] text-gray-300 hover:text-white border border-[#333] hover:border-[#39ff14] px-4 md:px-6 py-2 md:py-3 rounded text-xs font-bold uppercase transition-all flex items-center gap-2"
                       >
                         <Monitor size={14} /> Tab Audio
                       </button>
-                      <div className="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 hidden group-hover:block bg-black text-white text-xs px-3 py-1 rounded whitespace-nowrap">
-                        Coming Soon
-                      </div>
                     </div>
+
+                    <button
+                      onClick={() => {
+                        // Demo Mode: Simulate a session
+                        send({ type: "START", mode: "mic" }); // Use 'mic' type for UI but mock the stream
+                        setTimeout(() => send({ type: "TRANSCRIBE", text: "Hello! This is a simulated transcription." }), 1000);
+                        setTimeout(() => send({ type: "TRANSCRIBE", text: "Since no microphone was found, we are running in demo mode." }), 3000);
+                        setTimeout(() => send({ type: "TRANSCRIBE", text: "You can use this to test saving and summarization." }), 5000);
+                      }}
+                      className="bg-indigo-900/30 text-indigo-400 border border-indigo-500/50 px-4 md:px-6 py-2 md:py-3 rounded text-xs font-bold uppercase hover:bg-indigo-900/50 flex items-center gap-2"
+                    >
+                      <Play size={14} /> Demo Mode
+                    </button>
 
                     <div className="relative group">
                       <button
                         disabled
-                        className="bg-[#111] text-gray-600 border border-[#333] px-6 py-3 rounded text-xs font-bold uppercase cursor-not-allowed flex items-center gap-2"
+                        className="bg-[#111] text-gray-600 border border-[#333] px-4 md:px-6 py-2 md:py-3 rounded text-xs font-bold uppercase cursor-not-allowed flex items-center gap-2"
                       >
                         <Layers size={14} /> Dual Mode
                       </button>
@@ -667,31 +697,39 @@ export default function RecordingPage() {
                     </div>
                   </>
                 ) : state.matches("processing") ? (
-                  <button disabled className="bg-yellow-600/50 text-white px-8 py-3 rounded text-xs font-bold uppercase flex items-center gap-2 cursor-wait">
+                  <button disabled className="bg-yellow-600/50 text-white px-6 md:px-8 py-2 md:py-3 rounded text-xs font-bold uppercase flex items-center gap-2 cursor-wait">
                     <Loader2 size={14} className="animate-spin" /> Saving...
                   </button>
                 ) : state.matches("paused") ? (
                   <>
-                    <button onClick={() => send({ type: "RESUME" })} className="bg-green-600 text-white px-8 py-3 rounded text-xs font-bold uppercase hover:bg-green-500 flex items-center gap-2">
+                    <button onClick={() => send({ type: "RESUME" })} className="bg-green-600 text-white px-6 md:px-8 py-2 md:py-3 rounded text-xs font-bold uppercase hover:bg-green-500 flex items-center gap-2">
                       <Play size={14} fill="white" /> Resume
                     </button>
-                    <button onClick={handleStop} className="bg-red-600 text-white px-8 py-3 rounded text-xs font-bold uppercase hover:bg-red-500 flex items-center gap-2">
+                    <button onClick={handleStop} className="bg-red-600 text-white px-6 md:px-8 py-2 md:py-3 rounded text-xs font-bold uppercase hover:bg-red-500 flex items-center gap-2">
                       <Square size={14} fill="white" /> Stop Session
                     </button>
                   </>
                 ) : state.matches("recording") ? (
                   <>
-                    <button onClick={() => send({ type: "PAUSE" })} className="bg-blue-600 text-white px-8 py-3 rounded text-xs font-bold uppercase hover:bg-blue-500 flex items-center gap-2">
+                    <button onClick={() => send({ type: "PAUSE" })} className="bg-blue-600 text-white px-6 md:px-8 py-2 md:py-3 rounded text-xs font-bold uppercase hover:bg-blue-500 flex items-center gap-2">
                       <Pause size={14} fill="white" /> Pause
                     </button>
-                    <button onClick={handleStop} className="bg-red-600 text-white px-8 py-3 rounded text-xs font-bold uppercase hover:bg-red-500 flex items-center gap-2">
+                    <button onClick={handleStop} className="bg-red-600 text-white px-6 md:px-8 py-2 md:py-3 rounded text-xs font-bold uppercase hover:bg-red-500 flex items-center gap-2">
                       <Square size={14} fill="white" /> Stop Session
                     </button>
                   </>
+                ) : state.matches("completed") ? (
+                  <button onClick={() => send({ type: "RESET" })} className="bg-[#39ff14] text-black px-6 md:px-8 py-2 md:py-3 rounded text-xs font-bold uppercase hover:bg-[#39ff14]/80 flex items-center gap-2 border-2 border-black shadow-[4px_4px_0px_0px_rgba(0,0,0,1)]">
+                    <RefreshCw size={14} /> New Recording
+                  </button>
+                ) : state.matches("error") ? (
+                  <button onClick={() => send({ type: "RESET" })} className="bg-red-600 text-white px-6 md:px-8 py-2 md:py-3 rounded text-xs font-bold uppercase hover:bg-red-500 flex items-center gap-2">
+                    <RefreshCw size={14} /> Reset System
+                  </button>
                 ) : null}
               </div>
 
-              <div className="w-10"></div> {/* Spacer for balance */}
+              <div className="hidden md:block w-10"></div> {/* Spacer for balance on desktop */}
             </div>
 
           </div>
