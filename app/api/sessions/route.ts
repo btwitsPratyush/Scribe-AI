@@ -43,7 +43,17 @@ export async function GET(req: Request) {
       }
     }, { status: 200 });
   } catch (err) {
-    console.error("SESSION FETCH ERROR", err);
-    return NextResponse.json({ error: "Server error", details: err instanceof Error ? err.message : String(err) }, { status: 500 });
+    console.error("❌ SESSION FETCH ERROR:", err);
+    if (err instanceof Error) {
+      console.error("Error message:", err.message);
+      console.error("Error stack:", err.stack);
+    }
+    return NextResponse.json(
+      {
+        error: "Server error",
+        details: err instanceof Error ? err.message : String(err)
+      },
+      { status: 500 }
+    );
   }
 }
