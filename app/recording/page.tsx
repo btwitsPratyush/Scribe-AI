@@ -326,10 +326,12 @@ export default function RecordingPage() {
 
   /* ---------------------- Media Logic ---------------------- */
   const startMedia = async (type: "mic" | "tab" | "both") => {
+    console.log("🚀 startMedia called with type:", type);
     streamsRef.current = [];
     send({ type: "RESET" });
 
     if (typeof window === 'undefined' || typeof navigator === 'undefined' || !navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+      console.error("❌ Browser APIs missing");
       const msg = "Browser APIs not available or unsupported. Please update browser/refresh.";
       send({ type: "ERROR", message: msg });
       toast.error(msg);
@@ -337,6 +339,7 @@ export default function RecordingPage() {
     }
 
     if (!window.isSecureContext) {
+      console.error("❌ Not in secure context");
       const msg = "Audio recording requires a secure context (localhost or HTTPS).";
       send({ type: "ERROR", message: msg });
       toast.error(msg);
@@ -344,7 +347,10 @@ export default function RecordingPage() {
     }
 
     const socketInstance = socketRef.current;
+    console.log("🔌 Socket status:", socketInstance ? (socketInstance.connected ? "Connected" : "Disconnected") : "Null");
+
     if (!socketInstance || !socketInstance.connected) {
+      console.warn("⚠️ Socket not connected, attempting reconnect...");
       toast.error("Realtime service not connected. Please wait and try again.");
       if (!socketInstance) {
         connectSocket();
@@ -358,6 +364,7 @@ export default function RecordingPage() {
       let finalStream: MediaStream;
 
       if (type === "both") {
+        // ... (omitted for brevity, assume similar logs could be added if needed)
         const micStream = await navigator.mediaDevices.getUserMedia({ audio: { echoCancellation: true } });
         streamsRef.current.push(micStream);
 
@@ -388,10 +395,13 @@ export default function RecordingPage() {
       } else {
         // MIC MODE - Direct Call
         try {
+          console.log("🎤 Requesting microphone access...");
           const micStream = await navigator.mediaDevices.getUserMedia({ audio: true });
+          console.log("✅ Microphone access granted", micStream.id);
           streamsRef.current.push(micStream);
           finalStream = micStream;
         } catch (e: any) {
+          console.error("❌ Microphone access failed:", e);
           let errorMsg = "Failed to access microphone. ";
           if (e.name === "NotAllowedError" || e.name === "PermissionDeniedError") {
             errorMsg += "Permission denied. Allow microphone access in your browser settings.";
@@ -404,6 +414,7 @@ export default function RecordingPage() {
         }
       }
 
+      console.log("🌊 Stream ready, initializing recorder...");
       streamsRef.current.push(finalStream);
       send({ type: "START", mode: type });
 
