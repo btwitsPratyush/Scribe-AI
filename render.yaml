@@ -1,0 +1,15 @@
+services:
+  - type: web
+    name: scribe-ai-backend
+    env: node
+    buildCommand: npm install
+    startCommand: npm run start-socket-server
+    envVars:
+      - key: GEMINI_API_KEY
+        sync: false
+      - key: DATABASE_URL
+        sync: false
+      - key: USE_GEMINI
+        value: "true"
+      - key: SOCKET_SERVER_PORT
+        value: "3001"
