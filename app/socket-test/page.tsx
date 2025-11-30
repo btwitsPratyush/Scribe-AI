@@ -10,7 +10,12 @@ export default function SocketTestPage() {
   const socketRef = useRef<Socket | null>(null);
 
   useEffect(() => {
-    const socket = io('http://localhost:3001');
+    const socketUrl = process.env.NEXT_PUBLIC_SOCKET_URL;
+    const opts: any = {
+      transports: ['websocket', 'polling'],
+      reconnection: true,
+    };
+    const socket = socketUrl ? io(socketUrl, opts) : io(opts);
     socketRef.current = socket;
 
     socket.on('connect', () => {

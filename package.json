@@ -16,9 +16,9 @@
   "scripts": {
     "build": "prisma generate && next build",
     "clean-ports": "lsof -ti:3000,3001 | xargs kill -9 || true",
-    "dev": "npm run clean-ports && concurrently \"npm run dev:next\" \"npm run start-socket-server\"",
+    "dev": "npm run clean-ports && tsx watch server/index.ts",
     "dev:next": "next dev",
-    "dev:all": "concurrently \"npm run dev:next\" \"npm run start-socket-server\"",
+    "dev:all": "npm run dev",
     "lint": "eslint .",
     "start": "next start",
     "start-socket-server": "tsx server/index.ts",
