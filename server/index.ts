@@ -6,6 +6,21 @@ import { Server, Socket } from "socket.io";
 import { prisma } from "../lib/prisma";
 import { generateSummary as generateGeminiSummary } from "../lib/gemini";
 import { createGeminiTranscriber, Transcriber } from "./handlers/transcription-engine";
+import fs from 'fs';
+import path from 'path';
+
+console.log("Current working directory:", process.cwd());
+const nextDir = path.join(process.cwd(), '.next');
+if (fs.existsSync(nextDir)) {
+  console.log("✅ .next directory found at:", nextDir);
+} else {
+  console.error("❌ .next directory NOT found at:", nextDir);
+  try {
+    console.log("Directory listing:", fs.readdirSync(process.cwd()));
+  } catch (e) {
+    console.error("Failed to list directory:", e);
+  }
+}
 
 const dev = process.env.NODE_ENV !== "production";
 const app = next({ dev });
