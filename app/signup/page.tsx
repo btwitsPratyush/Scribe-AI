@@ -3,6 +3,8 @@ import React, { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { Eye, EyeOff, ArrowRight } from 'lucide-react';
 
+import useSoundEffect from "@/hooks/use-sound-effect";
+
 /* -------------------------------------------------------------------------- */
 /* Constants & Helper Components */
 /* -------------------------------------------------------------------------- */
@@ -71,6 +73,7 @@ const NeoButton = ({ children, onClick, type = "button", className = "", disable
 /* -------------------------------------------------------------------------- */
 
 export default function NeoAuthPage() {
+  const { play: playSound } = useSoundEffect();
   const [isLogin, setIsLogin] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
 
@@ -85,83 +88,84 @@ export default function NeoAuthPage() {
   const router = useRouter();
 
   const handleSubmit = async (e: React.FormEvent) => {
-  e.preventDefault();
-  setIsLoading(true);
-  setError('');
+    e.preventDefault();
+    playSound(); // Play sound on submit
+    setIsLoading(true);
+    setError('');
 
-  try {
-    if (isLogin) {
-      // LOGIN ------------------------
-      const response = await fetch('/api/auth/login', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email, password }),
-      });
+    try {
+      if (isLogin) {
+        // LOGIN ------------------------
+        const response = await fetch('/api/auth/login', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ email, password }),
+        });
 
-      const data = await response.json();
+        const data = await response.json();
 
-      if (!response.ok) {
-        setError(data.error || 'Login failed');
-        return;
+        if (!response.ok) {
+          setError(data.error || 'Login failed');
+          return;
+        }
+
+        window.location.href = '/recording';
+      } else {
+        // SIGNUP ------------------------
+        if (password !== confirmPassword) {
+          setError('Passwords do not match');
+          setIsLoading(false);
+          return;
+        }
+
+        const response = await fetch('/api/auth/register', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ name, email, password }),
+        });
+
+        const data = await response.json();
+
+        if (!response.ok) {
+          setError(data.error || 'Signup failed');
+          return;
+        }
+
+        // AUTO-LOGIN AFTER SIGNUP
+        const loginResponse = await fetch('/api/auth/login', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ email, password }),
+        });
+
+        const loginData = await loginResponse.json();
+
+        if (!loginResponse.ok) {
+          setError(loginData.error || 'Auto-login failed');
+          return;
+        }
+
+        window.location.href = '/recording';
       }
-
-      window.location.href = '/recording';
-    } else {
-      // SIGNUP ------------------------
-      if (password !== confirmPassword) {
-        setError('Passwords do not match');
-        setIsLoading(false);
-        return;
-      }
-
-      const response = await fetch('/api/auth/register', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ name, email, password }),
-      });
-
-      const data = await response.json();
-
-      if (!response.ok) {
-        setError(data.error || 'Signup failed');
-        return;
-      }
-
-      // AUTO-LOGIN AFTER SIGNUP
-      const loginResponse = await fetch('/api/auth/login', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email, password }),
-      });
-
-      const loginData = await loginResponse.json();
-
-      if (!loginResponse.ok) {
-        setError(loginData.error || 'Auto-login failed');
-        return;
-      }
-
-      window.location.href = '/recording';
+    } catch (err: any) {
+      setError(err.message || 'Something went wrong');
+    } finally {
+      setIsLoading(false);
     }
-  } catch (err: any) {
-    setError(err.message || 'Something went wrong');
-  } finally {
-    setIsLoading(false);
-  }
-};
+  };
   return (
     <div className="min-h-screen w-full bg-[#f8f7f4] relative overflow-hidden font-sans flex items-center justify-center p-4">
       {/* --- Background Decorative Elements --- */}
-      
+
       {/* The requested updated circle component */}
       <CircleElement />
 
       {/* Bottom Left Outline Circle */}
       <div className="absolute -bottom-32 -left-32 w-96 h-96 bg-white rounded-full border-4 border-black z-0 dashed" />
-      
+
       {/* Floating Geometric Shape */}
       <div className="absolute top-1/4 left-10 w-0 h-0 border-l-[20px] border-l-transparent border-t-[30px] border-t-black border-r-[20px] border-r-transparent rotate-45 z-0 hidden md:block" />
-      
+
       {/* Squiggly Arrow */}
       <svg className="absolute bottom-1/4 right-1/4 w-24 h-24 text-black z-0 hidden lg:block opacity-80" viewBox="0 0 100 100" fill="none" stroke="currentColor" strokeWidth="3">
         <path d="M10,50 C30,20 50,80 80,40" />
@@ -207,7 +211,7 @@ export default function NeoAuthPage() {
               label="Email Address"
               placeholder="YOUR@EMAIL.COM"
               value={email}
-                onChange={(e: React.ChangeEvent<HTMLInputElement>) => setEmail(e.target.value)}
+              onChange={(e: React.ChangeEvent<HTMLInputElement>) => setEmail(e.target.value)}
             />
 
             <div className="space-y-2 relative">
@@ -256,7 +260,7 @@ export default function NeoAuthPage() {
             )}
 
             <NeoButton type="submit" className="mt-6" disabled={isLoading}>
-              {isLoading ? 'Processing...' : isLogin ? 'Log In' : 'Get Started'} 
+              {isLoading ? 'Processing...' : isLogin ? 'Log In' : 'Get Started'}
               {!isLoading && <ArrowRight size={20} strokeWidth={3} />}
             </NeoButton>
 
