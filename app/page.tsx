@@ -4,7 +4,10 @@ import { useState, useEffect, useRef } from "react";
 import Link from "next/link";
 import { Mic, Play, Pause, Square, ArrowRight, Check, Lock, Smartphone, Github, Twitter, Mail, Zap, Database, PauseCircle, History, Lightbulb, BookOpen } from "lucide-react";
 
+import useSoundEffect from "@/hooks/use-sound-effect";
+
 export default function LandingPage() {
+  const { play: playSound } = useSoundEffect();
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const transcriptContainerRef = useRef<HTMLDivElement>(null);
   const [transcriptLines, setTranscriptLines] = useState<Array<{ type: string; content?: string; duration?: number }>>([]);
@@ -131,7 +134,7 @@ export default function LandingPage() {
               <Link href="#features" className="font-bold text-charcoal hover:underline decoration-4 decoration-neon-green underline-offset-4">Features</Link>
               <Link href="#demo" className="font-bold text-charcoal hover:underline decoration-4 decoration-neon-green underline-offset-4">Live Demo</Link>
               <Link href="/signup">
-                <button className="neo-btn px-6 py-2 text-sm">Get Started</button>
+                <button onClick={playSound} className="neo-btn px-6 py-2 text-sm">Get Started</button>
               </Link>
             </div>
 
@@ -185,7 +188,7 @@ export default function LandingPage() {
 
               <div className="flex flex-col sm:flex-row gap-4">
                 <Link href="/signup" className="w-full sm:w-auto">
-                  <button className="neo-btn px-8 py-4 text-lg w-full flex items-center justify-center gap-2">
+                  <button onClick={playSound} className="neo-btn px-8 py-4 text-lg w-full flex items-center justify-center gap-2">
                     Start Free Session
                     <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="3"><path strokeLinecap="square" strokeLinejoin="miter" d="M13 7l5 5m0 0l-5 5m5-5H6" /></svg>
                   </button>

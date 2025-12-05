@@ -43,7 +43,7 @@ export async function GET(req: Request) {
       }
     }, { status: 200 });
   } catch (err) {
-    console.error("❌ SESSION FETCH ERROR:", err);
+    console.error("SESSION FETCH ERROR:", err);
     if (err instanceof Error) {
       console.error("Error message:", err.message);
       console.error("Error stack:", err.stack);
