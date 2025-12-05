@@ -11,8 +11,10 @@ const spaceGrotesk = Space_Grotesk({
 export const metadata: Metadata = {
   title: "ScribeAI - Turn Speech Into Superpowers",
   description: "Capture meeting audio in real-time. Transcribe smarter, faster, and beautifully.",
-    generator: 'v0.app'
+  generator: 'v0.app'
 }
+
+import SmoothScrolling from "@/components/smooth-scrolling";
 
 export default function RootLayout({
   children,
@@ -22,6 +24,7 @@ export default function RootLayout({
   return (
     <html lang="en">
       <body className={`${spaceGrotesk.variable} font-sans antialiased bg-off-white text-charcoal overflow-x-hidden`}>
+        <SmoothScrolling />
         {children}
       </body>
     </html>
