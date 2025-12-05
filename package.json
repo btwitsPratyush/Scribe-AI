@@ -19,7 +19,7 @@
     "clean-ports": "lsof -ti:3000,3001 | xargs kill -9 || true",
     "dev": "npm run clean-ports && tsx watch server/index.ts",
     "dev:next": "next dev",
-    "dev:all": "npm run dev",
+    "dev:all": "npm run clean-ports && concurrently \"tsx watch server/index.ts\" \"next dev\" --names \"SERVER,NEXT\" -c \"blue,magenta\"",
     "lint": "eslint .",
     "start": "next start",
     "start-socket-server": "node server-dist/server/index.js",

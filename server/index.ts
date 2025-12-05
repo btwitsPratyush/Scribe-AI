@@ -6,21 +6,6 @@ import { Server, Socket } from "socket.io";
 import { prisma } from "../lib/prisma";
 import { generateSummary as generateGeminiSummary } from "../lib/gemini";
 import { createGeminiTranscriber, Transcriber } from "./handlers/transcription-engine";
-import fs from 'fs';
-import path from 'path';
-
-console.log("Current working directory:", process.cwd());
-const nextDir = path.join(process.cwd(), '.next');
-if (fs.existsSync(nextDir)) {
-  console.log("✅ .next directory found at:", nextDir);
-} else {
-  console.error("❌ .next directory NOT found at:", nextDir);
-  try {
-    console.log("Directory listing:", fs.readdirSync(process.cwd()));
-  } catch (e) {
-    console.error("Failed to list directory:", e);
-  }
-}
 
 const dev = process.env.NODE_ENV !== "production";
 const app = next({ dev });
@@ -106,28 +91,15 @@ app.prepare().then(() => {
       }
     });
 
-    // Receive transcript text (from Web Speech API)
+    // Receive transcript text
     socket.on("transcription", (data: { text: string }) => {
-      if (data.text && data.text.trim()) {
-        console.log("📝 Received transcription text:", data.text.substring(0, 50));
-        currentTranscription += data.text + "\n";
-        // Echo back to client for UI update
-        socket.emit("transcription", { text: data.text });
-      }
+      currentTranscription += data.text + "\n";
     });
 
     socket.on("audio-chunk", async (payload: string | { dataUrl?: string; mimeType?: string }) => {
       if (!transcriber) {
-        console.warn("⚠️ audio-chunk received before transcriber initialization. Creating transcriber...");
-        // Create transcriber if it doesn't exist (recovery)
-        transcriber = createGeminiTranscriber({
-          onPartial: (partial) => appendTranscript(partial),
-          onFinal: (finalText) => appendTranscript(finalText),
-          onError: (error) => {
-            console.error("Gemini transcriber error:", error);
-            socket.emit("error", "Transcription engine error.");
-          },
-        });
+        console.warn("audio-chunk received before transcriber initialization.");
+        return;
       }
 
       try {
@@ -139,16 +111,14 @@ app.prepare().then(() => {
         }
 
         if (!base64Payload) {
-          console.warn("⚠️ Received empty audio chunk payload");
+          console.warn("Received empty audio chunk payload");
           return;
         }
 
         const buffer = Buffer.from(base64Payload, "base64");
-        console.log(`📦 Processing audio chunk: ${buffer.length} bytes`);
         await transcriber.write(buffer);
-        console.log("✅ Audio chunk processed successfully");
       } catch (err) {
-        console.error("❌ Failed to process audio chunk:", err);
+        console.error("Failed to process audio chunk:", err);
         socket.emit("error", "Failed to process audio chunk.");
       }
     });

@@ -195,6 +195,17 @@ export default function RecordingPage() {
     typeof window !== "undefined" &&
     ("webkitSpeechRecognition" in window || "SpeechRecognition" in window);
 
+  /* ---------------------- Mobile Support Check ---------------------- */
+  const [isTabAudioSupported, setIsTabAudioSupported] = useState(false);
+
+  useEffect(() => {
+    setIsTabAudioSupported(
+      typeof navigator !== 'undefined' &&
+      !!navigator.mediaDevices &&
+      'getDisplayMedia' in navigator.mediaDevices
+    );
+  }, []);
+
   /* ---------------------- User Auth Fetch ---------------------- */
   useEffect(() => {
     async function fetchUser() {
@@ -244,78 +255,45 @@ export default function RecordingPage() {
 
   /* ---------------------- Socket Lifecycle ---------------------- */
   const connectSocket = useCallback(() => {
-    const socketUrl = process.env.NEXT_PUBLIC_SOCKET_URL || "http://localhost:3001";
+    // Default to undefined to let socket.io connect to the same origin (window.location)
+    // This works for both local (single port) and production.
+    const socketUrl = process.env.NEXT_PUBLIC_SOCKET_URL;
 
-    if (socketRef.current?.connected) {
-      console.log("✅ Socket already connected");
-      return;
-    }
+    if (socketRef.current) return;
 
-    if (socketRef.current) {
-      socketRef.current.disconnect();
-      socketRef.current = null;
-    }
-
-    console.log("🔌 Connecting to socket server:", socketUrl);
     const opts: any = {
       transports: ["websocket", "polling"],
       reconnection: true,
-      reconnectionDelay: 1000,
-      reconnectionAttempts: 5,
     };
 
-    const s = io(socketUrl, opts);
+    const s = socketUrl ? io(socketUrl, opts) : io(opts);
+
     socketRef.current = s;
 
     s.on("connect", () => {
-      console.log("✅ Socket connected:", s.id);
+      console.log("✅ Socket connected");
       toast.success("Connected to transcription service");
     });
 
-    s.on("disconnect", (reason) => {
-      console.warn("⚠️ Socket disconnected:", reason);
-      if (reason === "io server disconnect") {
-        // Server disconnected, reconnect manually
-        s.connect();
-      }
-    });
-
-    s.on("connect_error", (error) => {
-      console.error("❌ Socket connection error:", error);
-      toast.error("Failed to connect to transcription service. Make sure the server is running.");
-    });
-
     s.on("session-started", (data: { sessionId: string }) => {
-      console.log("📝 Session started:", data.sessionId);
       send({ type: "SESSION_STARTED", sessionId: data.sessionId });
     });
 
     s.on("transcription", (data: { text: string }) => {
-      if (data.text && data.text.trim()) {
-        console.log("📄 Received transcription:", data.text.substring(0, 50));
-        send({ type: "TRANSCRIBE", text: data.text });
-      }
-    });
-
-    s.on("processing", () => {
-      console.log("⚙️ Processing started");
-      toast.info("Processing transcription...");
+      if (data.text) send({ type: "TRANSCRIBE", text: data.text });
     });
 
     s.on("completed", (payload) => {
-      console.log("✅ Session completed:", payload);
       send({
         type: "COMPLETED",
         sessionId: payload.sessionId,
         downloadUrl: payload.downloadUrl,
         summary: payload.summary,
       });
-      toast.success("Session saved successfully!");
     });
 
     s.on("error", (err) => {
       const message = typeof err === "string" ? err : err.message || "Socket Error";
-      console.error("❌ Socket error:", message);
       toast.error(message);
       send({ type: "ERROR", message });
     });
@@ -346,7 +324,9 @@ export default function RecordingPage() {
     };
     // FIX: Removed 'connectSocket' dependency to resolve ReferenceError, 
     // relying on its stability via useCallback.
-  }, [state.context.duration, state.context.sessionId]);
+    // FIX: Removed state.context.duration and state.context.sessionId from dependencies
+    // to prevent the socket from disconnecting every second when duration updates.
+  }, []);
 
   /*  Duration Tracking */
   useEffect(() => {
@@ -387,35 +367,16 @@ export default function RecordingPage() {
     const socketInstance = socketRef.current;
     console.log("🔌 Socket status:", socketInstance ? (socketInstance.connected ? "Connected" : "Disconnected") : "Null");
 
-    // Ensure socket is connected before starting recording
-    if (!socketInstance) {
-      console.log("🔌 No socket instance, connecting...");
-      connectSocket();
-      // Wait a bit for connection
-      await new Promise(resolve => setTimeout(resolve, 500));
-    }
-
-    if (!socketRef.current || !socketRef.current.connected) {
-      if (socketRef.current?.disconnected) {
-        console.log("🔌 Reconnecting socket...");
-        socketRef.current.connect();
-        // Wait for connection with timeout
-        let attempts = 0;
-        while (!socketRef.current.connected && attempts < 10) {
-          await new Promise(resolve => setTimeout(resolve, 200));
-          attempts++;
-        }
+    if (!socketInstance || !socketInstance.connected) {
+      console.warn("⚠️ Socket not connected, attempting reconnect...");
+      toast.error("Realtime service not connected. Please wait and try again.");
+      if (!socketInstance) {
+        connectSocket();
+      } else if (socketInstance.disconnected) {
+        socketInstance.connect();
       }
-
-      if (!socketRef.current?.connected) {
-        console.error("❌ Socket still not connected after retry");
-        toast.error("Cannot connect to transcription service. Please check if the server is running on port 3001.");
-        send({ type: "ERROR", message: "Socket connection failed" });
-        return;
-      }
+      return;
     }
-
-    console.log("✅ Socket confirmed connected, proceeding with recording...");
 
     try {
       let finalStream: MediaStream;
@@ -476,6 +437,7 @@ export default function RecordingPage() {
       send({ type: "START", mode: type });
 
       if (isSpeechRecognitionAvailable && type !== "tab") {
+        console.log("🗣️ Initializing Web Speech API...");
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         const SpeechRecognition = (window as any).webkitSpeechRecognition || (window as any).SpeechRecognition;
         const recognition = new SpeechRecognition();
@@ -485,23 +447,55 @@ export default function RecordingPage() {
 
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         recognition.onresult = (event: any) => {
+          console.log("🗣️ Speech API Result received");
           let final = "";
           for (let i = event.resultIndex; i < event.results.length; i++) {
             if (event.results[i].isFinal) final += event.results[i][0].transcript + " ";
           }
           if (final.trim()) {
-            // send({ type: "TRANSCRIBE", text: "\n" + final.trim() });
+            console.log("🗣️ Final transcript:", final.trim());
+            send({ type: "TRANSCRIBE", text: "\n" + final.trim() });
             socketRef.current?.emit("transcription", { text: final.trim() });
           }
         };
 
+        recognition.onstart = () => console.log("🗣️ Speech API Started");
+
+        recognition.onerror = (e: any) => {
+          if (e.error === 'no-speech') {
+            // Ignore no-speech errors as they just mean silence was detected.
+            // The onend handler will restart the service automatically.
+            return;
+          }
+
+          console.error("🗣️ Speech API Error Event:", e);
+          console.error("🗣️ Speech API Error Code:", e.error);
+
+          if (e.error === 'not-allowed' || e.error === 'service-not-allowed') {
+            toast.error("Real-time transcription disabled (permission/service error). Recording will still be saved.");
+            // Stop trying to restart
+            recognition.onend = null;
+          }
+
+          if (e.error === 'network') {
+            toast.error("Real-time transcription offline (network issue). Audio is still being recorded for summary.");
+            // We can try to restart in case it's a temporary blip, but don't spam
+          }
+        };
+
         recognition.onend = () => {
-          if (mediaRecorderRef.current?.state === "recording") {
+          console.log("🗣️ Speech API Ended");
+          // Only restart if we are still recording and didn't hit a fatal error
+          if (mediaRecorderRef.current?.state === "recording" && recognition.onend) {
+            console.log("🗣️ Restarting Speech API...");
             try { recognition.start(); } catch (e) { /* ignore */ }
           }
         }
+
         recognitionRef.current = recognition;
         try { recognition.start(); } catch (e) { console.warn("Speech API start failed", e); }
+      } else {
+        console.log("⚠️ Web Speech API not available or disabled for this mode.");
       }
 
       const preferredMime = "audio/webm;codecs=opus";
@@ -512,39 +506,20 @@ export default function RecordingPage() {
       mediaRecorderRef.current = mr;
 
       mr.ondataavailable = (e) => {
-        if (e.data.size > 0) {
-          console.log(`📦 Audio chunk received: ${e.data.size} bytes`);
-          if (socketRef.current?.connected) {
-            const reader = new FileReader();
-            reader.onloadend = () => {
-              if (!reader.result || typeof reader.result !== "string") {
-                console.warn("⚠️ Failed to read audio chunk as data URL");
-                return;
-              }
-              console.log(`📤 Sending audio chunk to server (${reader.result.length} chars)`);
-              socketRef.current?.emit("audio-chunk", {
-                dataUrl: reader.result,
-                mimeType: e.data.type || mr.mimeType || preferredMime,
-                timestamp: Date.now(),
-              });
-            };
-            reader.onerror = (err) => {
-              console.error("❌ Error reading audio chunk:", err);
-            };
-            reader.readAsDataURL(e.data);
-          } else {
-            console.warn("⚠️ Socket not connected, skipping audio chunk");
-          }
+        if (e.data.size > 0 && socketRef.current?.connected) {
+          const reader = new FileReader();
+          reader.onloadend = () => {
+            if (!reader.result || typeof reader.result !== "string") return;
+            socketRef.current?.emit("audio-chunk", {
+              dataUrl: reader.result,
+              mimeType: e.data.type || mr.mimeType || preferredMime,
+              timestamp: Date.now(),
+            });
+          };
+          reader.readAsDataURL(e.data);
         }
       };
 
-      mr.onerror = (err) => {
-        console.error("❌ MediaRecorder error:", err);
-        toast.error("Recording error occurred");
-        send({ type: "ERROR", message: "MediaRecorder error" });
-      };
-
-      console.log("🎙️ Starting MediaRecorder with interval: 5000ms");
       mr.start(5000);
 
       const activeUserId = manualUserId === "guest_user_123" ? null : manualUserId;
@@ -714,8 +689,11 @@ export default function RecordingPage() {
 
               {/* Center timestamp if active */}
               {state.matches("recording") && !transcription && (
-                <div className="text-center text-gray-500 text-xs mb-8 tracking-widest">
-                  --- RECORDING STARTED {new Date().toLocaleTimeString()} ---
+                <div className="text-center text-gray-500 text-xs mb-8 tracking-widest flex flex-col gap-2">
+                  <div>--- RECORDING STARTED {new Date().toLocaleTimeString()} ---</div>
+                  <div className="text-[#39ff14] animate-pulse font-bold">
+                    Listening... (Transcription will appear here or after session ends)
+                  </div>
                 </div>
               )}
 
@@ -749,14 +727,17 @@ export default function RecordingPage() {
                       <Mic size={14} /> Mic Only
                     </button>
 
-                    <div className="relative group">
-                      <button
-                        onClick={() => startMedia("tab")}
-                        className="bg-[#111] text-gray-300 hover:text-white border border-[#333] hover:border-[#39ff14] px-4 md:px-6 py-2 md:py-3 rounded text-xs font-bold uppercase transition-all flex items-center gap-2"
-                      >
-                        <Monitor size={14} /> Tab Audio
-                      </button>
-                    </div>
+                    {/* Only show Tab Audio if supported (Desktop) */}
+                    {isTabAudioSupported && (
+                      <div className="relative group">
+                        <button
+                          onClick={() => startMedia("tab")}
+                          className="bg-[#111] text-gray-300 hover:text-white border border-[#333] hover:border-[#39ff14] px-4 md:px-6 py-2 md:py-3 rounded text-xs font-bold uppercase transition-all flex items-center gap-2"
+                        >
+                          <Monitor size={14} /> Tab Audio
+                        </button>
+                      </div>
+                    )}
 
                     <button
                       onClick={() => {
