@@ -123,6 +123,7 @@ async function callGeminiTranscribe(wavPath: string): Promise<string> {
 
   if (!res.ok) {
     const txt = await res.text();
+    console.error(`Gemini API Error details: ${res.status} ${txt}`);
     throw new Error(`Gemini API failed: ${res.status} ${txt}`);
   }
 
