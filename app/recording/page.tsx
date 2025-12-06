@@ -262,8 +262,9 @@ export default function RecordingPage() {
     if (socketRef.current) return;
 
     const opts: any = {
-      transports: ["websocket", "polling"],
       reconnection: true,
+      reconnectionAttempts: 5,
+      reconnectionDelay: 1000,
     };
 
     const s = socketUrl ? io(socketUrl, opts) : io(opts);

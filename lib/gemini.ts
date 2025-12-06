@@ -4,6 +4,7 @@
  */
 
 import { GoogleGenerativeAI } from "@google/generative-ai";
+import fetch from "node-fetch";
 
 if (!process.env.GEMINI_API_KEY) {
   console.warn("⚠️  GEMINI_API_KEY environment variable is not set. Summarization will not work.");
@@ -22,7 +23,7 @@ export function getTextModel() {
   if (!genAI) {
     throw new Error("GEMINI_API_KEY is not set. Cannot generate summaries.");
   }
-  return genAI.getGenerativeModel({ model: "gemini-1.5-flash" }); // <--- FIXED MODEL
+  return genAI.getGenerativeModel({ model: "gemini-pro" }); // <--- FIXED MODEL
 }
 
 /**
@@ -31,17 +32,49 @@ export function getTextModel() {
  * @returns Promise<string> - The generated summary
  */
 export async function generateSummary(transcript: string): Promise<string> {
-  const model = getTextModel();
+  const apiKey = process.env.GEMINI_API_KEY;
+  if (!apiKey) {
+    throw new Error("GEMINI_API_KEY is not set");
+  }
+
+  const model = "gemini-1.5-flash";
+  const endpoint = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`;
 
   const prompt = `Summarize this meeting: key points, action items, decisions.
 
 Transcript:
 ${transcript}`;
 
+  const payload = {
+    contents: [{
+      parts: [{
+        text: prompt
+      }]
+    }]
+  };
+
   try {
-    const result = await model.generateContent(prompt);
-    const response = await result.response;
-    return response.text();
+    const res = await fetch(endpoint, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json"
+      },
+      body: JSON.stringify(payload)
+    });
+
+    if (!res.ok) {
+      const txt = await res.text();
+      throw new Error(`Gemini API failed: ${res.status} ${txt}`);
+    }
+
+    const json: any = await res.json();
+    const summary = json.candidates?.[0]?.content?.parts?.[0]?.text;
+
+    if (!summary) {
+      throw new Error("Gemini response contained no summary text.");
+    }
+
+    return summary;
   } catch (error) {
     console.error("Error generating summary:", error);
     throw new Error("Failed to generate summary");
