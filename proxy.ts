@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
 
-export function middleware(req: NextRequest) {
+export default function middleware(req: NextRequest) {
   const session = req.cookies.get("auth"); // Custom auth session cookie
 
   // Routes that require login
