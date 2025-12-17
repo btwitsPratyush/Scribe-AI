@@ -384,6 +384,7 @@ MIT License - see LICENSE file for details
 ## 📧 Support
 
 For issues and questions, please open an issue on GitHub.
+this is updated readme just to verify.
 
 ---
 
